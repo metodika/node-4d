@@ -42,6 +42,10 @@ function DbConnection( options )
 		self.connected = false;
 	} );
 	
+	this.socket.on( 'error', function ( error ) {
+		console.log( 'Socket error: ', error );
+	} );
+
 	this.socket.on( 'data', function ( data ) {
 		// Append the incoming data to the buffer
 		console.log( 'OnData:' + data );
@@ -199,8 +203,11 @@ DbConnection.prototype.query = function( sql, params, callback )
 	var self = this;
 
 	command.callback = function( data ) {
-		if( Array.isArray( data ) == false ) {
+		if( Array.isArray( data ) == false  ) {
 			command.setResponseHeaders( data );
+			if( command.result.errors ) {
+				callback( command.result.errors, null, null );
+			}
 		} else {
 			command.setRows( data );
 			// Check if we need to fetch more rows
@@ -239,6 +246,9 @@ DbConnection.prototype.fetch = function( result, callback )
 	command.callback = function( data ) {
 		if( Array.isArray( data ) == false ) {
 			command.setResponseHeaders( data );
+			if( command.result.errors ) {
+				callback( command.result.errors, null, null );
+			}
 		} else {
 			command.setRows( data );
 			// Check if we need to fetch more rows
@@ -275,12 +285,20 @@ DbCommand.prototype.setResponseHeaders = function( headers )
 	var result = new DbResultSet();
 	this.result = result;
 	
-	if( headers.status == 'Error' ) {
+	if( headers.status == 'ERROR' ) {
 		result.errors = {};
+		result.errors.code = Number( headers.ErrorCode );
+		result.errors.message = headers.ErrorDescription;
+		if( headers.StackError1 )
+			result.errors.message += '\n' + headers.StackError1;
+		if( headers.StackError2 )
+			result.errors.message += '\n' + headers.StackError2;
+		if( headers.StackError3 )
+			result.errors.message += '\n' + headers.StackError3;
 		return;
 	}
 	
-	result.resultType = headers.ResultType || 'Error';
+	result.resultType = headers.ResultType || 'ERROR';
 	if( headers.ResultType == 'Result-Set' ) {
 		result.statementID = headers.StatementID;
 		result.commandCount = Number( headers.CommandCount );
@@ -364,6 +382,13 @@ function parseHeaders( packet )
 				value = base64Decode( value );
 			}
 			
+			// If the header starts with StackError, then decode the base64-encoded description
+			if( key.startsWith( 'Stack-Error' ) ) {
+				value = value.replace( /(\w+ \d+ \d+ )(.+)/, function( fullMatch, part1, part2 ) {
+					return part1 + base64Decode( part2 );
+				} );
+			}
+
 			// If the key indicates a column that is a list, then split the list into an array
 			if( listTypes.indexOf( key ) != -1 ) {
 				value = splitList( value );
