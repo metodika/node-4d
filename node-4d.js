@@ -162,17 +162,25 @@ DbConnection.prototype.logout = function()
 		throw new Error( 'Cannot logout. Not connected to database' );
 	}
 	
-	this.connected = false;
 	var command = this.createCommand( 'LOGOUT' );
-	command.request += kCRLF;		
+	command.request += kCRLF;
+
+	command.callback = function( data ) {
+		this.connected = false;
+	};
+
 	this.sendCommand( command );
 }
 
 DbConnection.prototype.close = function()
 {
-	this.connected = false;
 	var command = this.createCommand( 'QUIT' );
-	command.request += kCRLF;	
+	command.request += kCRLF;
+
+	command.callback = function( data ) {
+		this.connected = false;
+	};
+
 	this.sendCommand( command );
 }
 
