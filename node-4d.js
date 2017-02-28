@@ -27,7 +27,7 @@ function DbConnection( options )
 	this.errorMessage = '';
 	this.nextCommandID = 1;
 	this.affectedRows = 0;
-	this.fetchLimit = 100;
+	this.fetchLimit = 999999;
 	this.queue = {};
 	
 	this.socket = new net.Socket();
