@@ -71,11 +71,11 @@ function DbConnection( options )
 				if( headers ) {
 					command.result.headers = headers;
 				}
-				if( headers && command.callback ) {
-					command.callback( headers );
+				if( headers && command.onDataHandler ) {
+					command.onDataHandler( headers );
 				}
-				if( rows && command.callback ) {
-					command.callback( rows );
+				if( rows && command.onDataHandler ) {
+					command.onDataHandler( rows );
 				}
 			}
 		}
@@ -128,7 +128,7 @@ DbConnection.prototype.sendCommand = function( command )
 	this.queue[command.commandID] = command;
 }
 
-DbConnection.prototype.login = function( userCallback )
+DbConnection.prototype.login = function( callback )
 {
 	var self = this;
 	console.log( 'Connecting' );
@@ -144,10 +144,12 @@ DbConnection.prototype.login = function( userCallback )
 		command.request += 'OS-VERSION:' + os.release() + kCRLF;
 		command.request += kCRLF;
 		
-		command.callback = function( data ) {
+		command.onDataHandler = function( data ) {
 			self.connected = true;
-			userCallback();
+			this.onCompleteHandler();
 		}
+		
+		command.onCompleteHandler = callback;
 		
 		self.sendCommand( command );
 		
@@ -165,7 +167,7 @@ DbConnection.prototype.logout = function()
 	var command = this.createCommand( 'LOGOUT' );
 	command.request += kCRLF;
 
-	command.callback = function( data ) {
+	command.onDataHandler = function( data ) {
 		this.connected = false;
 	};
 
@@ -177,7 +179,7 @@ DbConnection.prototype.close = function()
 	var command = this.createCommand( 'QUIT' );
 	command.request += kCRLF;
 
-	command.callback = function( data ) {
+	command.onDataHandler = function( data ) {
 		this.connected = false;
 	};
 
@@ -186,7 +188,7 @@ DbConnection.prototype.close = function()
 
 DbConnection.prototype.end = DbConnection.prototype.close;
 
-DbConnection.prototype.query = function( sql, params, userCallback )
+DbConnection.prototype.query = function( sql, params, callback )
 {
 	if( !this.connected ) {
 		throw new Error( 'Cannot perform query. Not connected to database' );
@@ -210,28 +212,30 @@ DbConnection.prototype.query = function( sql, params, userCallback )
 	
 	var self = this;
 
-	command.callback = function( data ) {
+	command.onDataHandler = function( data ) {
 		if( Array.isArray( data ) == false  ) {
-			command.setResponseHeaders( data );
-			if( command.result.errors ) {
-				userCallback( command.result.errors, null, null );
+			this.setResponseHeaders( data );
+			if( this.result.errors ) {
+				this.onCompleteHandler( this.result.errors, null, null );
 			}
 		} else {
-			command.setRows( data );
+			this.setRows( data );
 			// Check if we need to fetch more rows
-			if( command.result.rowCountReceived == command.result.rowCountSent && command.result.rows.length < command.result.rowCount ) {
-				self.fetch( command.result, userCallback );
-			} else if( command.result.rows.length == command.result.rowCount ) {
-				// We have fetched all rows, run the callback
-				userCallback( command.result.errors, command.result.rows, command.result.fields );
+			if( this.result.rowCountReceived == this.result.rowCountSent && this.result.rows.length < this.result.rowCount ) {
+				self.fetch( this.result, this.onCompleteHandler );
+			} else if( this.result.rows.length == this.result.rowCount ) {
+				// We have fetched all rows, run the on complete handler
+				this.onCompleteHandler( this.result.errors, this.result.rows, this.result.fields );
 			}
 		}
 	}
 	
+	command.onCompleteHandler = callback;
+	
 	this.sendCommand( command );
 }
 
-DbConnection.prototype.fetch = function( result, userCallback )
+DbConnection.prototype.fetch = function( result, callback )
 {
 	if( !this.connected ) {
 		throw new Error( 'Cannot perform fetch. Not connected to database' );
@@ -251,23 +255,25 @@ DbConnection.prototype.fetch = function( result, userCallback )
 	command.request += 'FULL-ERROR-STACK:Y' + kCRLF;
 	command.request += kCRLF;
 	
-	command.callback = function( data ) {
+	command.onDataHandler = function( data ) {
 		if( Array.isArray( data ) == false ) {
-			command.setResponseHeaders( data );
-			if( command.result.errors ) {
-				userCallback( command.result.errors, null, null );
+			this.setResponseHeaders( data );
+			if( this.result.errors ) {
+				this.onCompleteHandler( this.result.errors, null, null );
 			}
 		} else {
-			command.setRows( data );
+			this.setRows( data );
 			// Check if we need to fetch more rows
-			if( command.result.rowCountReceived == command.result.rowCountSent && command.result.rows.length < command.result.rowCount ) {
-				self.fetch( command.result, userCallback );
-			} else if( command.result.rows.length == command.result.rowCount ) {
-				// We have fetched all rows, run the callback
-				userCallback( command.result.errors, command.result.rows, command.result.fields );
+			if( this.result.rowCountReceived == this.result.rowCountSent && this.result.rows.length < this.result.rowCount ) {
+				self.fetch( this.result, this.onCompleteHandler );
+			} else if( this.result.rows.length == this.result.rowCount ) {
+				// We have fetched all rows, run the on complete handler
+				this.onCompleteHandler( this.result.errors, this.result.rows, this.result.fields );
 			}
 		}
 	}
+	
+	command.onCompleteHandler = callback;
 	
 	this.sendCommand( command );
 }
@@ -285,7 +291,8 @@ function DbCommand( id, type )
 	this.status = '';
 	this.request = this.commandID + ' ' + this.type + kCRLF;
 	this.result = null;
-	this.callback = null;
+	this.onDataHandler = null;
+	this.onCompleteHandler = null;
 }
 
 DbCommand.prototype.setResponseHeaders = function( headers )
