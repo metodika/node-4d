@@ -128,7 +128,7 @@ DbConnection.prototype.sendCommand = function( command )
 	this.queue[command.commandID] = command;
 }
 
-DbConnection.prototype.login = function( callback )
+DbConnection.prototype.login = function( userCallback )
 {
 	var self = this;
 	console.log( 'Connecting' );
@@ -146,7 +146,7 @@ DbConnection.prototype.login = function( callback )
 		
 		command.callback = function( data ) {
 			self.connected = true;
-			callback();
+			userCallback();
 		}
 		
 		self.sendCommand( command );
@@ -186,7 +186,7 @@ DbConnection.prototype.close = function()
 
 DbConnection.prototype.end = DbConnection.prototype.close;
 
-DbConnection.prototype.query = function( sql, params, callback )
+DbConnection.prototype.query = function( sql, params, userCallback )
 {
 	if( !this.connected ) {
 		throw new Error( 'Cannot perform query. Not connected to database' );
@@ -214,16 +214,16 @@ DbConnection.prototype.query = function( sql, params, callback )
 		if( Array.isArray( data ) == false  ) {
 			command.setResponseHeaders( data );
 			if( command.result.errors ) {
-				callback( command.result.errors, null, null );
+				userCallback( command.result.errors, null, null );
 			}
 		} else {
 			command.setRows( data );
 			// Check if we need to fetch more rows
 			if( command.result.rowCountReceived == command.result.rowCountSent && command.result.rows.length < command.result.rowCount ) {
-				self.fetch( command.result, callback );
+				self.fetch( command.result, userCallback );
 			} else if( command.result.rows.length == command.result.rowCount ) {
 				// We have fetched all rows, run the callback
-				callback( command.result.errors, command.result.rows, command.result.fields );
+				userCallback( command.result.errors, command.result.rows, command.result.fields );
 			}
 		}
 	}
@@ -231,7 +231,7 @@ DbConnection.prototype.query = function( sql, params, callback )
 	this.sendCommand( command );
 }
 
-DbConnection.prototype.fetch = function( result, callback )
+DbConnection.prototype.fetch = function( result, userCallback )
 {
 	if( !this.connected ) {
 		throw new Error( 'Cannot perform fetch. Not connected to database' );
@@ -255,16 +255,16 @@ DbConnection.prototype.fetch = function( result, callback )
 		if( Array.isArray( data ) == false ) {
 			command.setResponseHeaders( data );
 			if( command.result.errors ) {
-				callback( command.result.errors, null, null );
+				userCallback( command.result.errors, null, null );
 			}
 		} else {
 			command.setRows( data );
 			// Check if we need to fetch more rows
 			if( command.result.rowCountReceived == command.result.rowCountSent && command.result.rows.length < command.result.rowCount ) {
-				self.fetch( command.result, callback );
+				self.fetch( command.result, userCallback );
 			} else if( command.result.rows.length == command.result.rowCount ) {
 				// We have fetched all rows, run the callback
-				callback( command.result.errors, command.result.rows, command.result.fields );
+				userCallback( command.result.errors, command.result.rows, command.result.fields );
 			}
 		}
 	}
