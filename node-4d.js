@@ -364,7 +364,11 @@ DbCommand.prototype.setRows = function( rows )
 				case 'VK_TIMESTAMP' :
 					// Is date- time value
 					var items = value.match( /(\d{2})-(\d{2})-(\d{4}) (\d{2}):(\d{2})/ );
-					value = new Date( items[3] + '-' + items[2] + '-' + items[1] + ' ' + items[4] + ':' + items[5] );
+					if( items.length >= 6 ) {
+						value = new Date( items[3] + '-' + items[2] + '-' + items[1] + ' ' + items[4] + ':' + items[5] );
+					} else {
+						value = null;
+					}
 					break;
 				case 'VK_DURATION' :
 					// Is time-only value (do not translate)
