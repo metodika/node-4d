@@ -334,7 +334,39 @@ DbCommand.prototype.setRows = function( rows )
 		var row = {};
 		for( var j = 0 ; j < this.result.fields.length ; j++ ) {
 			var field = this.result.fields[j].name;
+			var type = this.result.fields[j].type;
 			var value = rows[i][j];
+			// Convert the value to its closest equivalent
+			switch( type )
+			{
+				case 'VK_STRING' :
+				case 'VK_TEXT' :
+					break;
+				case 'VK_LONG' :
+				case 'VK_LONG8' :
+				case 'VK_BYTE' :
+				case 'VK_WORD' :
+				case 'VK_REAL' :
+				case 'VK_FLOAT' :
+					value = Number( value );
+					break;
+				case 'VK_BOOLEAN' :
+					value = ( value == 'true' );
+					break;
+				case 'VK_TIME' :
+				case 'VK_TIMESTAMP' :
+					// Is date- time value
+					var items = value.match( /(\d{2})-(\d{2})-(\d{4}) (\d{2}):(\d{2})/ );
+					value = new Date( items[3] + '-' + items[2] + '-' + items[1] + ' ' + items[4] + ':' + items[5] );
+					break;
+				case 'VK_DURATION' :
+					// Is time-only value (do not translate)
+					break;
+				case 'VK_BLOB' :
+				case 'VK_IMAGE' :
+					value = value ? Buffer.from( value, 'base64' ) : null;
+					break;
+			}
 			row[field] = value;
 		}
 		this.result.rows.push( row );
