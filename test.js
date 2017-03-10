@@ -5,7 +5,11 @@ var settings = { host: 'localhost', port: 19812, user: 'Rob Laveaux', password: 
 try {
 	var db = fourd.createConnection( settings );
 
-	db.connect( function() {
+	db.connect( function( errors ) {
+		if( errors ) {
+			console.log( errors );
+			return;
+		}
 		db.query( "SELECT * FROM Artikel WHERE Omschrijving LIKE $0", ['Noppies%'], function( errors, results, fields ) {
 			console.log( fields );
 			console.log( results );

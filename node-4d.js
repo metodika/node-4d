@@ -76,6 +76,7 @@ function DbConnection( options )
 					command.result.headers = headers;
 				}
 				if( headers && command.onDataHandler ) {
+					command.setResponseHeaders( headers );
 					command.onDataHandler( headers );
 				}
 				if( rows && command.onDataHandler ) {
@@ -158,10 +159,10 @@ DbConnection.prototype.connect = function( callback )
 			self.connected = ( data.status == 'OK' );
 			if( self.connected ) {
 				console.log( 'Node-4D: Login OK' );
-				this.onCompleteHandler();
+				this.onCompleteHandler( null );
 			} else {
 				console.log( 'Node-4D: Login failed' );
-				throw this.result.errors;
+				this.onCompleteHandler( this.result.errors );
 			}
 		}
 		
@@ -174,7 +175,7 @@ DbConnection.prototype.connect = function( callback )
 DbConnection.prototype.close = function()
 {
 	if( !this.connected ) {
-			throw new Error( 'Cannot logout. Not connected to database' );
+		throw new Error( 'Cannot logout. Not connected to database' );
 	}
 	
 	this.connected = false;
@@ -230,7 +231,6 @@ DbConnection.prototype.query = function( sql, params, callback )
 
 	command.onDataHandler = function( data ) {
 		if( Array.isArray( data ) == false  ) {
-			this.setResponseHeaders( data );
 			if( this.result.errors ) {
 				this.completed = true;
 				this.onCompleteHandler( this.result.errors, null, null );
@@ -275,7 +275,6 @@ DbConnection.prototype.fetch = function( result, callback )
 	
 	command.onDataHandler = function( data ) {
 		if( Array.isArray( data ) == false ) {
-			this.setResponseHeaders( data );
 			if( this.result.errors ) {
 				this.completed = true;
 				this.onCompleteHandler( this.result.errors, null, null );
