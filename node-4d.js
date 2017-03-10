@@ -81,6 +81,11 @@ function DbConnection( options )
 				if( rows && command.onDataHandler ) {
 					command.onDataHandler( rows );
 				}
+				
+				// Remove the command from the queue when it is completed
+				if( command.completed ) {
+					delete self.queue[command.commandID];
+				}
 			}
 		}
 	} );
@@ -149,6 +154,7 @@ DbConnection.prototype.connect = function( callback )
 		command.request += kCRLF;
 		
 		command.onDataHandler = function( data ) {
+			this.completed = true;
 			self.connected = ( data.status == 'OK' );
 			if( self.connected ) {
 				console.log( 'Node-4D: Login OK' );
@@ -162,7 +168,6 @@ DbConnection.prototype.connect = function( callback )
 		command.onCompleteHandler = callback;
 		
 		self.sendCommand( command );
-		
 	} );
 }
 
@@ -180,6 +185,7 @@ DbConnection.prototype.close = function()
 
 	logoutCommand.onDataHandler = function( data ) {
 		console.log( 'Node-4D: Logout received' );
+		this.completed = true;
 	};
 	
 	this.sendCommand( logoutCommand );
@@ -190,6 +196,7 @@ DbConnection.prototype.close = function()
 
 	quitCommand.onDataHandler = function( data ) {
 		console.log( 'Node-4D: Quit received' );
+		this.completed = true;
 	};
 
 	this.sendCommand( quitCommand );
@@ -225,6 +232,7 @@ DbConnection.prototype.query = function( sql, params, callback )
 		if( Array.isArray( data ) == false  ) {
 			this.setResponseHeaders( data );
 			if( this.result.errors ) {
+				this.completed = true;
 				this.onCompleteHandler( this.result.errors, null, null );
 			}
 		} else {
@@ -234,6 +242,7 @@ DbConnection.prototype.query = function( sql, params, callback )
 				self.fetch( this.result, this.onCompleteHandler );
 			} else if( this.result.rows.length == this.result.rowCount ) {
 				// We have fetched all rows, run the on complete handler
+				this.completed = true;
 				this.onCompleteHandler( this.result.errors, this.result.rows, this.result.fields );
 			}
 		}
@@ -268,6 +277,7 @@ DbConnection.prototype.fetch = function( result, callback )
 		if( Array.isArray( data ) == false ) {
 			this.setResponseHeaders( data );
 			if( this.result.errors ) {
+				this.completed = true;
 				this.onCompleteHandler( this.result.errors, null, null );
 			}
 		} else {
@@ -277,6 +287,7 @@ DbConnection.prototype.fetch = function( result, callback )
 				self.fetch( this.result, this.onCompleteHandler );
 			} else if( this.result.rows.length == this.result.rowCount ) {
 				// We have fetched all rows, run the on complete handler
+				this.completed = true;
 				this.onCompleteHandler( this.result.errors, this.result.rows, this.result.fields );
 			}
 		}
@@ -302,6 +313,7 @@ function DbCommand( id, type )
 	this.result = null;
 	this.onDataHandler = null;
 	this.onCompleteHandler = null;
+	this.completed = false;
 }
 
 DbCommand.prototype.setResponseHeaders = function( headers )
