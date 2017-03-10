@@ -114,3 +114,36 @@ STATEMENT-ID SP : SP Statement ID CRLF
 COMMAND-INDEX SP : SP Command index CRLF
 ROW-COUNT SP : SP Amount of records to be modified CRLF CRLF
 Binary data
+
+# Binary mode
+
+- Status byte for each value '1' (non-null), '0' (null), '2' (error). These status codes are characters (not byte values).
+- If null then no value, if error then next value is error code VLong8 and no further data is send. If not null then followed by value in binary format.
+- Optional row number (32-bit integer)
+- VK_STRING are encoded as UTF-16 LE. They start with a 32-bit signed value which is the length (but as a negative number).
+- VK_REAL is encoded as a 8-byte double
+- VK_TIME (date): 16-bit signed int (year), 1 byte (month), 1 byte (day), 32-bit long (seconds since midnight
+)
+- VK_BOOLEAN: 16-bit int
+- VK_LONG 32-bit int
+- VK_BLOB: ???
+- VK_IMAGE: ???
+
+Typical response:
+1 <id 4 bytes> 1  0xF6FFFFFF UTF16-string 0xF8FFFFFF 
+
+
+
+Rows are output from first to last.
+If result-set is updateable then each row starts with a 4 byte ID of a record, otherwise record ID is omitted.
+Column values within a row are output from left to right.
+Each value is preceded by a status byte. If the value was successfully calculated then the status byte is character ‘1’ for non-null values and character ‘0’ for null values.
+If there was an error during value calculation then the status byte is character ‘2’.
+If the value is null then immediately after ‘0’ status byte goes the data for the next value.
+If the status byte is ‘2’ then the status byte is followed by the VLong8 error code and no more data is sent for this command (TODO: Should also send the error message).
+The ‘1’ status byte is followed by the binary representation of one of the VValueSingle subclass instances.
+The exact type of the instance can be determined using “Column-Types” header.
+Binary data for VValueSingle should be read using ReadFromStream() method with the appropriate sub-class of VStream whenever possible.
+The only exception from this case is binary values for columns of type VK_IMAGE. VK_IMAGE values are streamed as VBlob and thus should be read as such. Binary data should never be read manually unless XToolBox streaming classes are not available.
+Binary data ends with the last value in the last row. There is no command terminator of any kind.
+
