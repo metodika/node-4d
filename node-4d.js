@@ -554,6 +554,75 @@ function DbResultSet()
 	this.affectedRows = 0;
 }
 
+function DbConnectionPool( options )
+{
+	this.options = options;
+	this.pool = [];
+}
+
+DbConnection.createPool = function( options )
+{
+	return new DbConnectionPool( options );
+}
+
+DbConnectionPool.prototype.getConnection = function( callback )
+{
+	var connection = null;
+	
+	for( var i = 0 ; i < this.pool.length ; i++ ) {
+		if( this.pool[i].available ) {
+			connection = this.pool[i];
+			connection.available = false;
+			callback( null, connection );
+		}
+	}
+	
+	if( connection == null ) {
+		var pool = this;
+		connection = DbConnection.createConnection( this.options );
+		connection.available = false;
+		connection.release = function() {
+			pool.release( this );
+		}
+		this.pool.push( connection );
+		connection.connect( function ( errors ) {
+			callback( errors, errors ? null : connection );
+		} );
+	}
+}
+
+DbConnectionPool.prototype.release = function( connection )
+{
+	var index = this.pool.indexOf( connection );
+	if( index != -1 ) {
+		connection.available = true;
+		this.pool.splice( index, 1 );
+		this.pool.push( connection );
+	}
+}
+
+DbConnectionPool.prototype.end = function()
+{
+	for( var i = 0 ; i < this.pool.length ; i++ ) {
+		connection = this.pool[i];
+		connection.close();
+	}
+	
+	this.pool = [];
+}
+
+DbConnectionPool.prototype.query = function( sql, params, callback )
+{
+	var args = Array.prototype.slice.call( arguments, 0, arguments.length );
+	this.getConnection( function( errors, connection ) {
+		if( errors ) {
+			callback( errors, null, null );
+		} else {
+			connection.query.apply( connection, args );
+		}
+	} );
+}
+
 // Utilities
 
 function md5( value )
