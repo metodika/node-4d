@@ -501,18 +501,15 @@ DbCommand.prototype.parseRows = function( buffer )
 							default :
 								error = "Unknown data-type: " + type;
 								throw error;
-								break;
 						}
 						break;
 					case '2' :
 						error = "Error in data from stream: " + buffer.readInt32LE( offset );
 						offset += 4;
 						throw error;
-						break;
 					default :
 						error = "Unknown status byte: " + status;
 						throw error;
-						break;
 				}
 				
 				record[name] = value;
