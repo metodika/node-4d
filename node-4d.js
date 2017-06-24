@@ -161,7 +161,7 @@ DbConnection.prototype.connect = function( callback )
 	} );
 }
 
-DbConnection.prototype.close = function()
+DbConnection.prototype.end = function()
 {
 	if( !this.connected ) {
 		throw new Error( 'Cannot logout. Not connected to database' );
@@ -191,8 +191,6 @@ DbConnection.prototype.close = function()
 
 	this.sendCommand( quitCommand );
 }
-
-DbConnection.prototype.end = DbConnection.prototype.close;
 
 DbConnection.prototype.query = function( sql, params, callback )
 {
@@ -602,7 +600,7 @@ DbConnectionPool.prototype.end = function()
 {
 	for( var i = 0 ; i < this.pool.length ; i++ ) {
 		connection = this.pool[i];
-		connection.close();
+		connection.end();
 	}
 	
 	this.pool = [];
