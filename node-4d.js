@@ -26,7 +26,6 @@ function DbConnection( options )
 	this.error = 0;
 	this.errorMessage = '';
 	this.nextCommandID = 1;
-	this.affectedRows = 0;
 	this.fetchLimit = 999999;
 	this.queue = {};
 	
@@ -550,8 +549,6 @@ function DbResultSet()
 	this.errors = null;
 	this.rows = [];
 	this.fields = [];
-	this.lastInsertID = 0;
-	this.affectedRows = 0;
 }
 
 function DbConnectionPool( options )
