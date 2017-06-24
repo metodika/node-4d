@@ -13,6 +13,19 @@ var crypto = require( 'crypto' );
 
 const kCRLF = "\r\n";
 
+var DbFactory = {};
+
+DbFactory.createConnection = function( options )
+{
+	var db = new DbConnection( options );
+	return db;
+}
+
+DbFactory.createPool = function( options )
+{
+	return new DbConnectionPool( options );
+}
+
 function DbConnection( options )
 {
 	this.port = options.port || 19812;
@@ -283,12 +296,6 @@ DbConnection.prototype.fetch = function( result, callback )
 	this.sendCommand( command );
 }
 
-DbConnection.createConnection = function( options )
-{
-	var db = new DbConnection( options );
-	return db;
-}
-
 function DbCommand( id, type )
 {
 	this.commandID = ( '0000000000' + id ).substr( -10, 10 );
@@ -555,11 +562,6 @@ function DbConnectionPool( options )
 	this.pool = [];
 }
 
-DbConnection.createPool = function( options )
-{
-	return new DbConnectionPool( options );
-}
-
 DbConnectionPool.prototype.getConnection = function( callback )
 {
 	var connection = null;
@@ -665,4 +667,4 @@ function prepareSQL( sql, params )
 	return sql;
 }
 
-module.exports = DbConnection;
+module.exports = DbFactory;
