@@ -75,6 +75,10 @@ Opens a connection to the database. Upon completion the callback function is inv
 
 Ends the connection to the database. A logout and quit command are send to the server after which the server will close the connection with the client.
 
+##### DbConnection.release()
+
+This function is only available for connections that are part of a connection pool. Calling this function makes the connection available again, so that it can be re-used.
+
 ##### DbConnection.query( sql, params, callback )
 
 Sends a sql query to the database. The first parameter is a string holding the SQL statement. It may contain place holders for variables. Place holders can be defined in two ways:
@@ -100,11 +104,27 @@ The last parameter is the callback function which will be executed when the quer
 
 #### DbConnectionPool
 
-DbConnectionPool.getConnection( callback )
+A DbConnection represents a pool of reusable, persistent database connections. It offers functionality to obtain a connection from the pool and release it.
 
-DbConnectionPool.release( connection )
+##### DbConnectionPool.getConnection( callback )
 
-DbConnectionPool.end( connection )
+Obtains an available connection from the pool. When a connection is obtained, the callback function is executed. When no connections are available, then a new connection is created and added to the pool.
 
-DbConnectionPool.query( sql, params, callback )
+##### DbConnectionPool.release( connection )
 
+When a connection obtained from the pool is no longer needed, then it needs to be returned to the pool when it is no longer needed. This makes the connection reusable.
+
+Releasing a connection can be done in two ways:
+
+- By calling the `release()` function on the connection object.
+- By calling the `release( connection )` object on the pool object.
+
+##### DbConnectionPool.end()
+
+Ends all connections in the pool. This function should be called when the pool is no longer needed. 
+
+The function iterates over all the connections in the pool and calls the `end()` function on each connection. This sends a logout and quit command to the server.
+
+##### DbConnectionPool.query( sql, params, callback )
+
+Obtains a connection from the pool and runs the SQL query. When the query is done, the connection is automatically released to the pool.
