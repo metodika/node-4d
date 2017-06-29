@@ -590,6 +590,7 @@ DbConnectionPool.prototype.getConnection = function( callback )
 
 DbConnectionPool.prototype.release = function( connection )
 {
+	// Release the connection and make it available again to the pool
 	var index = this.pool.indexOf( connection );
 	if( index != -1 ) {
 		connection.available = true;
@@ -600,22 +601,25 @@ DbConnectionPool.prototype.release = function( connection )
 
 DbConnectionPool.prototype.end = function()
 {
-	for( var i = 0 ; i < this.pool.length ; i++ ) {
-		connection = this.pool[i];
+	// End all connections in the pool
+	while( pool.length > 0 ) {
+		connection = this.pool.pop();
+		connection.available = false;
 		connection.end();
 	}
-	
-	this.pool = [];
 }
 
 DbConnectionPool.prototype.query = function( sql, params, callback )
 {
 	var args = Array.prototype.slice.call( arguments, 0, arguments.length );
+	
+	// Obtain a connection from the pool and use it to run the query
 	this.getConnection( function( errors, connection ) {
 		if( errors ) {
 			callback( errors, null, null );
 		} else {
 			connection.query.apply( connection, args );
+			connection.release();
 		}
 	} );
 }
