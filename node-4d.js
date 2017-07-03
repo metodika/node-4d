@@ -17,8 +17,7 @@ var DbFactory = {};
 
 DbFactory.createConnection = function( options )
 {
-	var db = new DbConnection( options );
-	return db;
+	return new DbConnection( options );
 }
 
 DbFactory.createPool = function( options )
@@ -575,8 +574,9 @@ DbConnectionPool.prototype.getConnection = function( callback )
 	}
 	
 	if( connection == null ) {
+		console.log("connection is null!!!!");
 		var pool = this;
-		connection = DbConnection.createConnection( this.options );
+		connection = DbFactory.createConnection( this.options );
 		connection.available = false;
 		connection.release = function() {
 			pool.release( this );
