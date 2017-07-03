@@ -464,7 +464,7 @@ DbCommand.prototype.parseRows = function( buffer )
 								break;
 							case 'VK_LONG8' :
 								// Note: JavaScript uses a 64-bit double for numbers, which does not cover the entire range of a 64-bit int
-								value = ( buffer.readInt32LE( offset ) << 8 ) + buffer.readInt32LE( offset + 4 );
+								value = ( buffer.readInt32LE( offset + 4 ) << 8 ) + buffer.readInt32LE( offset );
 								offset += 8;
 								break;
 							case 'VK_REAL' :
@@ -492,8 +492,9 @@ DbCommand.prototype.parseRows = function( buffer )
 								value = new Date( year, month - 1, day, 0, 0, seconds );
 								break;
 							case 'VK_DURATION' :
-								value = buffer.readInt32LE( offset );
-								offset += 4;
+								// Value is time in milliseconds (64-bit int)
+								value = ( buffer.readInt32LE( offset + 4 ) << 8 ) + buffer.readInt32LE( offset );
+								offset += 8;
 								break;
 							case 'VK_BLOB' :
 							case 'VK_IMAGE' :
