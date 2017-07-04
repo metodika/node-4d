@@ -575,7 +575,6 @@ DbConnectionPool.prototype.getConnection = function( callback )
 	}
 	
 	if( connection == null ) {
-		console.log("connection is null!!!!");
 		var pool = this;
 		connection = DbFactory.createConnection( this.options );
 		connection.available = false;
