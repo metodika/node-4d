@@ -40,6 +40,7 @@ function DbConnection( options )
 	this.nextCommandID = 1;
 	this.fetchLimit = 999999;
 	this.queue = {};
+	this.debug = options.debug || false;
 	
 	this.socket = new net.Socket();
 	this.socket.setKeepAlive( true, 30 * 1000 );
@@ -47,16 +48,20 @@ function DbConnection( options )
 	var self = this;
 	
 	this.socket.setTimeout( 180 * 1000, function () {
-		console.log( 'Node-4D: Socket timeout' );
-		self.connected = false;
+		if(this.debug === false){
+			self.connected = false;
+		} else {
+			if(this.debug === true) console.log( 'Node-4D: Socket timeout' );
+			self.connected = false;
+		}
 	} );
 	
 	this.socket.on( 'error', function ( error ) {
-		console.log( 'Node-4D: Socket error', error );
+		if(this.debug === true) console.log( 'Node-4D: Socket error', error );
 	} );
 	
 	this.socket.on( 'close', function ( error ) {
-		console.log( 'Node-4D: Connection closed' );
+		if(this.debug === true) console.log( 'Node-4D: Connection closed' );
 	} );
 	
 	this.socket.on( 'data', function ( data ) {
@@ -142,10 +147,10 @@ DbConnection.prototype.sendCommand = function( command )
 DbConnection.prototype.connect = function( callback )
 {
 	var self = this;
-	console.log( 'Node-4D: Connecting' );
+	if(this.debug === true) console.log( 'Node-4D: Connecting' );
 	
 	this.socket.connect( this.port, this.host, function () {
-		console.log( 'Node-4D: Connected' );
+		if(this.debug === true) console.log( 'Node-4D: Connected' );
 		var command = self.createCommand( 'LOGIN' );
 		command.request += 'USER-NAME:' + self.user + kCRLF;
 		command.request += 'USER-PASSWORD:' + self.password + kCRLF;
@@ -159,10 +164,10 @@ DbConnection.prototype.connect = function( callback )
 			this.completed = true;
 			self.connected = ( data.status == 'OK' );
 			if( self.connected ) {
-				console.log( 'Node-4D: Login OK' );
+				if(this.debug === true) console.log( 'Node-4D: Login OK' );
 				this.onCompleteHandler( null );
 			} else {
-				console.log( 'Node-4D: Login failed' );
+				if(this.debug === true) console.log( 'Node-4D: Login failed' );
 				this.onCompleteHandler( this.errors );
 			}
 		}
@@ -186,7 +191,7 @@ DbConnection.prototype.end = function()
 	logoutCommand.request += kCRLF;
 
 	logoutCommand.onDataHandler = function( data ) {
-		console.log( 'Node-4D: Logout received' );
+		if(this.debug === true) console.log( 'Node-4D: Logout received' );
 		this.completed = true;
 	};
 	
@@ -197,7 +202,7 @@ DbConnection.prototype.end = function()
 	quitCommand.request += kCRLF;
 
 	quitCommand.onDataHandler = function( data ) {
-		console.log( 'Node-4D: Quit received' );
+		if(this.debug === true) console.log( 'Node-4D: Quit received' );
 		this.completed = true;
 	};
 
@@ -367,7 +372,7 @@ DbCommand.prototype.setResponseHeaders = function( headers )
 	var result = new DbResultSet();
 	this.result = result;
 	this.result.headers = headers;
-	console.log( headers );
+	if(this.debug === true) console.log( headers );
 	if( headers.status == 'ERROR' ) {
 		this.errors = {};
 		this.errors.code = Number( headers.ErrorCode );
