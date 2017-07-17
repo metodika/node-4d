@@ -48,21 +48,17 @@ function DbConnection( options )
 	var self = this;
 	
 	this.socket.setTimeout( 180 * 1000, function () {
-		if(this.debug === false){
-			self.connected = false;
-		} else {
-			if(this.debug === true) console.log( 'Node-4D: Socket timeout' );
-			self.connected = false;
-		}
-	} );
+		if(this.debug === true) console.log( 'Node-4D: Socket timeout' );
+		self.connected = false;
+	});
 	
 	this.socket.on( 'error', function ( error ) {
 		if(this.debug === true) console.log( 'Node-4D: Socket error', error );
-	} );
+	});
 	
 	this.socket.on( 'close', function ( error ) {
 		if(this.debug === true) console.log( 'Node-4D: Connection closed' );
-	} );
+	});
 	
 	this.socket.on( 'data', function ( data ) {
 		// Append the incoming data to the buffer
