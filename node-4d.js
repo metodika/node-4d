@@ -31,7 +31,7 @@ function DbConnection( options )
 	this.host = options.host || '127.0.0.1';
 	this.user = options.user || 'Administrator';
 	this.password = options.password || '';
-	this.options =  options;
+	this.options = options;
 	this.socket = null;
 	this.connected = false;
 	this.buffer = Buffer.alloc( 0 );
@@ -158,12 +158,14 @@ DbConnection.prototype.connect = function( callback )
 		
 		command.onDataHandler = function( data ) {
 			this.completed = true;
-			self.connected = ( data.status == 'OK' );
+			self.connected = Boolean(data.status === "OK");
 			if( self.connected ) {
 				if(this.debug === true) console.log( 'Node-4D: Login OK' );
+
 				this.onCompleteHandler( null );
 			} else {
 				if(this.debug === true) console.log( 'Node-4D: Login failed' );
+
 				this.onCompleteHandler( this.errors );
 			}
 		}
@@ -563,29 +565,60 @@ function DbConnectionPool( options )
 	this.pool = [];
 }
 
-DbConnectionPool.prototype.getConnection = function( callback )
+DbConnectionPool.prototype.getConnection = function(callback)
 {
-	var connection = null;
-	
-	for( var i = 0 ; i < this.pool.length ; i++ ) {
-		if( this.pool[i].available ) {
-			connection = this.pool[i];
+	if(!callback){
+		return new Promise((resolve,reject) => {
+
+			let connection = null;
+
+			// Loop pools and see if there are any available
+			for(let i = 0; i < this.pool.length; i++){
+				if(this.pool[i].available === true){
+					connection = this.pool[i];
+					connection.available = false;
+					resolve(connection);
+				}
+			}
+
+			// None was available, create a connection and return that
+			if(connection === null){
+				let pool = this;
+				connection = DbFactory.createConnection(this.options);
+				connection.available = false;
+				connection.release = function() {
+					pool.release(this);
+				}
+				this.pool.push(connection);
+				connection.connect(err => {
+					if(err) return reject(err);
+					return resolve(connection);
+				});
+			}
+		});
+	} else {
+		var connection = null;
+		
+		for( var i = 0 ; i < this.pool.length ; i++ ) {
+			if( this.pool[i].available ) {
+				connection = this.pool[i];
+				connection.available = false;
+				callback( null, connection );
+			}
+		}
+		
+		if( connection == null ) {
+			var pool = this;
+			connection = DbFactory.createConnection( this.options );
 			connection.available = false;
-			callback( null, connection );
+			connection.release = function() {
+				pool.release( this );
+			}
+			this.pool.push( connection );
+			connection.connect( function ( errors ) {
+				callback( errors, errors ? null : connection );
+			} );
 		}
-	}
-	
-	if( connection == null ) {
-		var pool = this;
-		connection = DbFactory.createConnection( this.options );
-		connection.available = false;
-		connection.release = function() {
-			pool.release( this );
-		}
-		this.pool.push( connection );
-		connection.connect( function ( errors ) {
-			callback( errors, errors ? null : connection );
-		} );
 	}
 }
 
@@ -612,17 +645,30 @@ DbConnectionPool.prototype.end = function()
 
 DbConnectionPool.prototype.query = function( sql, params, callback )
 {
-	var args = Array.prototype.slice.call( arguments, 0, arguments.length );
-	
-	// Obtain a connection from the pool and use it to run the query
-	this.getConnection( function( errors, connection ) {
-		if( errors ) {
-			callback( errors, null, null );
-		} else {
-			connection.query.apply( connection, args );
-			connection.release();
-		}
-	} );
+	if(!callback){
+		return new Promise((resolve, reject) => {
+			this.getConnection()
+				.then(connection => {
+					connection.query.call(connection, sql, params, (errors, results, fields) => {
+						resolve({errors, results, fields});
+						connection.release();
+					});
+				})
+				.catch(err => reject(err));
+		});
+	} else {
+		var args = Array.prototype.slice.call(arguments, 0, arguments.length);
+
+		// Obtain a connection from the pool and use it to run the query
+		this.getConnection(function (errors, connection) {
+			if (errors) {
+				callback(errors, null, null);
+			} else {
+				connection.query.apply(connection, args);
+				connection.release();
+			}
+		});
+	}
 }
 
 // Utilities
