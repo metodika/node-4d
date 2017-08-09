@@ -6,7 +6,7 @@
  #	24-01-2017
  #
  # --------------------------------------------------------------------------------*/
-
+/*eslint-disable*/
 var os = require( 'os' );
 var net = require( 'net' );
 var crypto = require( 'crypto' );
@@ -40,7 +40,7 @@ function DbConnection( options )
 	this.nextCommandID = 1;
 	this.fetchLimit = 999999;
 	this.queue = {};
-	this.debug = options.debug || false;
+	this.debug = options.debug || false;
 	
 	this.socket = new net.Socket();
 	this.socket.setKeepAlive( true, 30 * 1000 );
@@ -569,55 +569,43 @@ DbConnectionPool.prototype.getConnection = function(callback)
 {
 	if(!callback){
 		return new Promise((resolve,reject) => {
-
 			let connection = null;
 
 			// Loop pools and see if there are any available
-			for(let i = 0; i < this.pool.length; i++){
-				if(this.pool[i].available === true){
-					connection = this.pool[i];
-					connection.available = false;
-					resolve(connection);
-				}
-			}
-
-			// None was available, create a connection and return that
-			if(connection === null){
-				let pool = this;
+			const availableConnections = this.pool.filter(c => c.available === true);
+			if(availableConnections.length > 0){
+				connection = availableConnections[0];
+				connection.available = false;
+				resolve(connection);
+			} else {
 				connection = DbFactory.createConnection(this.options);
 				connection.available = false;
-				connection.release = function() {
-					pool.release(this);
-				}
-				this.pool.push(connection);
+				connection.release = () => this.release(this);
 				connection.connect(err => {
-					if(err) return reject(err);
-					return resolve(connection);
+					if(err) reject(err);
+					this.pool.push(connection);
+					resolve(connection);
 				});
 			}
 		});
 	} else {
-		var connection = null;
 		
-		for( var i = 0 ; i < this.pool.length ; i++ ) {
-			if( this.pool[i].available ) {
-				connection = this.pool[i];
-				connection.available = false;
-				callback( null, connection );
-			}
-		}
-		
-		if( connection == null ) {
-			var pool = this;
-			connection = DbFactory.createConnection( this.options );
+		let connection = null;
+
+		// Loop pools and see if there are any available
+		const availableConnections = this.pool.filter(c => c.available === true);
+		if (availableConnections.length > 0) {
+			connection = availableConnections[0];
 			connection.available = false;
-			connection.release = function() {
-				pool.release( this );
-			}
-			this.pool.push( connection );
-			connection.connect( function ( errors ) {
-				callback( errors, errors ? null : connection );
-			} );
+			callback(null, connection);
+		} else {
+			connection = DbFactory.createConnection(this.options);
+			connection.available = false;
+			connection.release = () => this.release(this);
+			connection.connect(err => {
+				if(!err) this.pool.push(connection);
+				callback(err, err ? null : connection);
+			});
 		}
 	}
 }
@@ -646,7 +634,7 @@ DbConnectionPool.prototype.end = function()
 DbConnectionPool.prototype.query = function( sql, params, callback )
 {
 	if(!callback){
-		return new Promise((resolve, reject) => {
+		return new Promise(async (resolve,reject) => {
 			this.getConnection()
 				.then(connection => {
 					connection.query.call(connection, sql, params, (errors, results, fields) => {
@@ -655,8 +643,10 @@ DbConnectionPool.prototype.query = function( sql, params, callback )
 					});
 				})
 				.catch(err => reject(err));
+
 		});
 	} else {
+
 		var args = Array.prototype.slice.call(arguments, 0, arguments.length);
 
 		// Obtain a connection from the pool and use it to run the query
