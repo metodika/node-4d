@@ -6,7 +6,6 @@
  #	24-01-2017
  #
  # --------------------------------------------------------------------------------*/
-/*eslint-disable*/
 var os = require( 'os' );
 var net = require( 'net' );
 var crypto = require( 'crypto' );
@@ -634,7 +633,7 @@ DbConnectionPool.prototype.end = function()
 DbConnectionPool.prototype.query = function( sql, params, callback )
 {
 	if(!callback){
-		return new Promise(async (resolve,reject) => {
+		return new Promise((resolve,reject) => {
 			this.getConnection()
 				.then(connection => {
 					connection.query.call(connection, sql, params, (errors, results, fields) => {
@@ -643,7 +642,6 @@ DbConnectionPool.prototype.query = function( sql, params, callback )
 					});
 				})
 				.catch(err => reject(err));
-
 		});
 	} else {
 
