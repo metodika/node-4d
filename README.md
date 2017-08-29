@@ -53,7 +53,7 @@ The options parameter is an object that defines the settings to use for the conn
 | host     | The IP address or host name to connect to (default value is "127.0.0.1"). |
 | port     | The port number to connect to (default value is 19812). |
 | user     | The username to use for the login (default value is "Administrator"). |
-| passwor  | The password to use for the login.       |
+| password | The password to use for the login.       |
 
 See the documentation for the DbConnection class for more details.
 
